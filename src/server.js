@@ -54,9 +54,9 @@ logger.info("Starting server....");
 /**
  * * /health for healthchecks in the future
  */
-app.get("/health", validationController.healthCheck, async (req, res) => {
+app.get("/song", validationController.healthCheck, async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.status(200).send("Server Running");
+  res.status(200).send("Song Delivered");
 });
 
 /**
