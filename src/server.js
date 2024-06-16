@@ -19,14 +19,15 @@ import logger from "./middlewares/logger.js" // logging
  */
 const app = express();
 app.use(cors());
+app.use(express.json());
 logger.debug("Env Vars: " + JSON.stringify(config));
 
 /**
  * *Postgres Setup
  */
-import pgController  from "./utils/postgres.js" // test
-pgController.connect(); // connect to sql DB
-pgController.refreshModels();
+import pgController  from "./utils/database/postgresController.js" // test
+pgController.admin.connect(); // connect to sql DB
+pgController.admin.refreshModels();
 
 logger.debug("Connected to Postgres");
 
@@ -66,29 +67,79 @@ app.get("/health", validationController.healthCheck, async (req, res) => {
 
 
 
-app.get("/song/:songId", validationController.healthCheck, async (req, res) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
 
 
-});
+
 /**
- * * /test postgres
+ * *GET /song/:songId
  */
-app.get("/test", async (req, res) => {
+app.get("/song/:songId", async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
+  logger.debug(`Retrieving song with songId: ${req.params.songId}`);
 
-  logger.debug("Testing Postgres Connection");
+  const songId = req.params.songId;
+  const requestedSong = await pgController.get.song(songId);
 
   try {
-    ; // test
-
-    res.status(200).send(await pgController.test());
+    res.status(200).send(await requestedSong);
   } catch (error) {
     console.error(error);
     res.status(500).send("Internal Server Error");
   }
 });
 
+/**
+ * *GET /songs
+ */
+app.get("/songs", async (req, res) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  logger.debug(`Retrieving songs`);
+
+  const requestedSongs = await pgController.get.songs();
+
+  try {
+    res.status(200).send(await requestedSongs);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Internal Server Error");
+  }
+});
+
+/**
+ * *POST /song
+ */
+app.post("/song", async (req, res) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  logger.debug(`Creating song: ${req.body.title}`);
+
+  const songData = req.body;
+  const newSong = await pgController.post.song(songData);
+
+  try {
+    res.status(200).send(await newSong);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Internal Server Error");
+  }
+});
+
+/**
+ * *POST /songs
+ */
+app.post("/songs", async (req, res) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  logger.debug(`Creating songs`);
+
+  const songData = req.body;
+  const newSongs = await pgController.post.songs(songData);
+
+  try {
+    res.status(200).send(await newSongs);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Internal Server Error");
+  }
+});
 
 // START SERVER
 const PORT = process.env.PORT;

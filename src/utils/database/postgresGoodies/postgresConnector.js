@@ -1,5 +1,5 @@
 import { Sequelize } from "sequelize";
-import logger from "../../middlewares/logger.js";
+import logger from "../../../middlewares/logger.js";
 
 const pgConnector = new Sequelize({
 	database: process.env.PG_DATABASE,

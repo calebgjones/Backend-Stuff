@@ -1,5 +1,5 @@
 
-export class Song {
+export class SongModel {
 	constructor({ songId, title, artist, album, genre }) {
 		this.songId = songId;
 		this.title = title;

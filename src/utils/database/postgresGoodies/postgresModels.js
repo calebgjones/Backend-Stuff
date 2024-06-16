@@ -2,7 +2,7 @@
 import { DataTypes } from "sequelize";
 import pgConnector from "./postgresConnector.js";
 
-export const SongModel = pgConnector.define("SongModel", {
+export const Song = pgConnector.define("song", {
 	songId: {
 		type: DataTypes.STRING, primaryKey: true, allowNull: false,
 	},
