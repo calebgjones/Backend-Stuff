@@ -1,17 +1,18 @@
 /**
  ** App Packages
  */
-const express = require("express");
-const cors = require("cors");
-const dotenv = require("dotenv"); // for use of environment variables
-const http = require("http");
+ import express from "express";
+ import cors from "cors";
+ import dotenv from "dotenv"; // for use of environment variables
+ import http from "http";
+
 
 const config = dotenv.config(); // Prints Local Variables
 
 /**
  * * Observability
  */
-const logger = require("./middlewares/logger.js"); // logging
+import logger from "./middlewares/logger.js" // logging
 
 /**
  ** App Setup
@@ -20,20 +21,25 @@ const app = express();
 app.use(cors());
 logger.debug("Env Vars: " + JSON.stringify(config));
 
-//const dbController = require("./utils/db.js"); // test
-//dbController.connect(); // connect to sql DB
-//dbController.refreshModels();
+/**
+ * *Postgres Setup
+ */
+import pgController  from "./utils/postgres.js" // test
+pgController.connect(); // connect to sql DB
+pgController.refreshModels();
+
+logger.debug("Connected to Postgres");
 
 /**
  * *Import Utilities
  */
-const { utilityWrapper } = require("./utils/utilityWrapper.js"); // For s3 / sftp connections
+//import utilityWrapper from "./utils/utilityWrapper.js" // For s3 / sftp connections
 logger.debug("Imported Utilities");
 
 /**
  * *Import Middlewares
  */
-const { validationController } = require("./middlewares/requestValidation.js"); // For request validation
+import validationController from "./middlewares/requestValidation.js" // For request validation
 logger.debug("Imported Middlewares");
 
 /**
@@ -41,6 +47,7 @@ logger.debug("Imported Middlewares");
  */
 const httpServer = http.createServer(app); // server var
 
+logger.info("Starting server....");
 
 /**
  *
@@ -48,23 +55,38 @@ const httpServer = http.createServer(app); // server var
  * - /health
  */
 
-
-logger.info("Starting server....");
-
 /**
  * * /health for healthchecks in the future
  */
-app.get("/song", validationController.healthCheck, async (req, res) => {
+app.get("/health", validationController.healthCheck, async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.status(200).send("Song Delivered");
+  res.status(200).send("Server Ready");
 });
 
-/**
- * * /validationTest for testing the validation middleware
- */
-app.get("/validationTest", validationController.test, async (req, res) => {
+
+
+
+app.get("/song/:songId", validationController.healthCheck, async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.status(200).send("Server Running");
+
+
+});
+/**
+ * * /test postgres
+ */
+app.get("/test", async (req, res) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+
+  logger.debug("Testing Postgres Connection");
+
+  try {
+    ; // test
+
+    res.status(200).send(await pgController.test());
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Internal Server Error");
+  }
 });
 
 

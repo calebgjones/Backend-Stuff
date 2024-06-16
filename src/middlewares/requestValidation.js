@@ -1,5 +1,4 @@
-const utilityWrapper = require ('../utils/utilityWrapper.js')
-const logger = require('./logger.js')
+import logger from './logger.js'
 
 const healthCheck = (req, res, next) => {
     logger.info(`Health Check Endpoint Hit by IP Address: ${req.socket.remoteAddress}`)
@@ -12,11 +11,9 @@ const test = (req, res, next) => {
 }
 
 
-
-
-module.exports = {
-    validationController: {
-        healthCheck: healthCheck,
-        test: test
-    }
+const validationController = {
+    healthCheck: healthCheck,
+    test: test
 }
+
+export default validationController
