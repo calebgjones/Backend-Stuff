@@ -1,7 +1,7 @@
-import { v4 as uuidv4 } from 'uuid';
 import logger from "../../middlewares/logger.js";
 
 import pgConnector from "./postgresGoodies/postgresConnector.js";
+import { handleDbErrors } from './postgresGoodies/postgresErrorHandler.js';
 // Import the constructors
 import { SongModel }  from "../constructors.js";
 
@@ -9,16 +9,14 @@ import { SongModel }  from "../constructors.js";
 import { Song } from "./postgresGoodies/postgresModels.js";
 
 
-
-
 const pgController = {
 	admin: {
 		refreshModels: async () => {
 			try {
-				await pgConnector.sync();
-				logger.debug("Models refreshed");
+				await pgConnector.sync({ force: true });
+				logger.debug("Sequelize Models refreshed");
 			} catch (error) {
-				logger.error("Unable to refresh models:", error);
+				handleDbErrors(error);
 			}
 		},
 		connect	: async () => {
@@ -26,31 +24,27 @@ const pgController = {
 				await pgConnector.authenticate();
 				logger.debug("Database Connection has been established successfully.");
 			} catch (error) {
-				logger.error("Unable to connect to the database:", error);
+				handleDbErrors(error);
 			}
 		},
 	},
 	post: {
-		song: async (songData) => {
-			const genSongId = uuidv4();
-			let songId = genSongId;
-			
+		song: async (songMetaData) => {
 			const createSong = async () => {
 				await Song.create({
-					songId: songId,
-					title: songData.title,
-					artist: songData.artist,
-					album: songData.album,
-					genre: songData.genre,
+					s3key: songMetaData.s3key,
+					title: songMetaData.title,
+					artist: songMetaData.artist,
+					album: songMetaData.album,
+					genre: songMetaData.genre,
 				});
 			};
 
 			try {
 				await createSong();
-				return await Song.findAll({ where: { songId: songId } });
+				return await Song.findAll({ where: { s3key: songMetaData.s3key } });
 			} catch (error) {
-				logger.error("Error creating song:", error);
-				throw new Error(`Error creating song: ${error}`);
+				handleDbErrors(error);
 			}
 		},
 		songs: async (songsData) => {
@@ -58,34 +52,51 @@ const pgController = {
 				await Song.bulkCreate(songsData);
 			};
 
+			const songIds = songsData.map(song => song.songId);
+
 			try {
 				await createSongs();
-				return await Song.findAll();
+				return await Song.findAll({ where: { songId: songIds }});
 			} catch (error) {
-				logger.error("Error creating songs:", error);
-				throw new Error(`Error creating songs: ${error}`);
+				handleDbErrors(error);
 			}
 		}
 	},
 	delete: {
-		song: async (songId) => {
-
-			delteSong = async () => {
-				await Song.destroy({ where: { songId: songId } });
+		song: async (id) => {
+			const deleteSong = async () => {
+				await Song.destroy({ where: { id: id } });
 			}
 
 			try {
-				await delteSong();
-				return await Song.findAll({ where: { songId: songId } });
+				await deleteSong();
+				return await Song.findAll({ where: { id: id } });
 			} catch (error) {
-				logger.error("Error deleting song:", error);
-				throw new Error(`Error deleting song: ${error}`);
+				handleDbErrors(error);
+			}
+		},
+		all: async () => {
+			const deleteAllTables = async () => {
+				// Get all table names except Sequelize's default tables
+				const tableNames = await pgConnector.query(
+					"SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'"
+				);
+				// Delete all tables
+				for (const tableName of tableNames) {
+					await pgConnector.query(`DROP TABLE IF EXISTS ${tableName.table_name} CASCADE`);
+				}
+			};
+
+			try {
+				await deleteAllTables();
+			} catch (error) {
+				handleDbErrors(error);
 			}
 		},
 	},
 	get: {
-		song: async (songId) => {
-			return await Song.findAll({ where: { songId: songId } });
+		song: async (id) => {
+			return await Song.findAll({ where: { id: id } });
 		},
 		songs: async () => {
 			return await Song.findAll();

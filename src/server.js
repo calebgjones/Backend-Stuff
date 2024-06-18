@@ -1,11 +1,12 @@
 /**
  ** App Packages
  */
- import express from "express";
- import cors from "cors";
- import dotenv from "dotenv"; // for use of environment variables
- import http from "http";
-
+import express from "express";
+import cors from "cors";
+import dotenv from "dotenv"; // for use of environment variables
+import http from "http";
+import multer from "multer";
+import fs from "fs";
 
 const config = dotenv.config(); // Prints Local Variables
 
@@ -21,13 +22,17 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 logger.debug("Env Vars: " + JSON.stringify(config));
+const upload = multer({ dest: "../../uploads" });
 
 /**
  * *Postgres Setup
  */
-import pgController  from "./utils/database/postgresController.js" // test
+import pgController from "./utils/database/postgresController.js" // test
 pgController.admin.connect(); // connect to sql DB
-pgController.admin.refreshModels();
+
+// Uncomment to reset the database
+//pgController.delete.all();
+//pgController.admin.refreshModels();
 
 logger.debug("Connected to Postgres");
 
@@ -36,6 +41,7 @@ logger.debug("Connected to Postgres");
  */
 //import utilityWrapper from "./utils/utilityWrapper.js" // For s3 / sftp connections
 logger.debug("Imported Utilities");
+import { s3Controller } from "./utils/s3/awsS3.js";
 
 /**
  * *Import Middlewares
@@ -49,6 +55,8 @@ logger.debug("Imported Middlewares");
 const httpServer = http.createServer(app); // server var
 
 logger.info("Starting server....");
+
+
 
 /**
  *
@@ -73,17 +81,20 @@ app.get("/health", validationController.healthCheck, async (req, res) => {
 /**
  * *GET /song/:songId
  */
-app.get("/song/:songId", async (req, res) => {
+app.get("/song/:id", async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  logger.debug(`Retrieving song with songId: ${req.params.songId}`);
+  logger.debug(`Retrieving song with songId: ${req.params.id}`);
 
-  const songId = req.params.songId;
-  const requestedSong = await pgController.get.song(songId);
+  const requestedSong = await pgController.get.song(req.params.id);
+  const presignedUrl = await s3Controller.getPresignedURL(requestedSong[0].dataValues.s3key);
+
+  let songData = requestedSong[0].dataValues;
+  songData.presignedUrl = presignedUrl;
 
   try {
-    res.status(200).send(await requestedSong);
+    res.status(200).send(await songData);
   } catch (error) {
-    console.error(error);
+    logger.error(error);
     res.status(500).send("Internal Server Error");
   }
 });
@@ -100,44 +111,79 @@ app.get("/songs", async (req, res) => {
   try {
     res.status(200).send(await requestedSongs);
   } catch (error) {
-    console.error(error);
+    logger.error(error);
     res.status(500).send("Internal Server Error");
   }
 });
+
+
+
+
+
+
+
 
 /**
  * *POST /song
  */
-app.post("/song", async (req, res) => {
+app.post('/song', upload.single('file'), async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  logger.debug(`Creating song: ${req.body.title}`);
-
-  const songData = req.body;
-  const newSong = await pgController.post.song(songData);
-
+  
   try {
-    res.status(200).send(await newSong);
+    const localFilePath = req.file.path;
+    const fileData = fs.createReadStream(localFilePath);
+
+    let songMetaData = req.body;
+
+    const uploadSong = async () => {
+      const s3key = await s3Controller.uploadSong(fileData);
+      songMetaData.s3key = await s3key;
+
+      logger.error(songMetaData)
+
+      const updateDb = pgController.post.song(songMetaData); 
+      return await updateDb;
+    };
+
+    res.status(200).send(await uploadSong());
   } catch (error) {
-    console.error(error);
+    logger.error(error);
     res.status(500).send("Internal Server Error");
   }
 });
 
+
+
+
 /**
- * *POST /songs
+ * *DELETE /song/:songId
  */
-app.post("/songs", async (req, res) => {
+app.delete("/song/:id", async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  logger.debug(`Creating songs`);
+  logger.debug(`Deleting song with songId: ${req.params.id}`);
 
-  const songData = req.body;
-  const newSongs = await pgController.post.songs(songData);
+  const retrievedSong = await pgController.get.song(req.params.id);
 
-  try {
-    res.status(200).send(await newSongs);
-  } catch (error) {
-    console.error(error);
-    res.status(500).send("Internal Server Error");
+  if (await retrievedSong.length === 0) {
+    res.status(404).send("Song not found");
+  } else {
+    const s3Key = await retrievedSong[0].dataValues.s3key;
+    const deleteS3Obj = async () => {
+      await s3Controller.deleteSong(s3Key);
+    };
+
+    const deleteSong = async () => {
+      await pgController.delete.song(req.params.id);
+    }
+
+    try {
+      await deleteS3Obj();
+      await deleteSong();
+      res.status(200).send("Song deleted");
+    } catch (error) {
+      logger.error(error);
+      res.status(500).send("Internal Server Error");
+    }
   }
 });
 
