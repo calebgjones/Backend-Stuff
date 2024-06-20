@@ -1,12 +1,30 @@
 FROM node:18-alpine as base
 WORKDIR /usr/app/
 
+## ENVIRONMENT VARIABLES
+# Server Config
+ENV PORT=8443
+ENV LOG_LEVEL=debug
+ENV APP_NAME="music-player-backend"
+# Postgres Connection Info
+ENV PG_DATABASE=""
+ENV PG_USERNAME=""
+ENV PG_PASSWORD=""
+ENV PG_HOST=""
+ENV PG_PORT=""
+
+#S3 Connection Info
+ENV AWS_S3_BUCKET=""
+ENV AWS_REGION=""
+ENV AWS_ACCESS_KEY_ID=""
+ENV AWS_SECRET_ACCESS_KEY=""
+
+
 # install dependencies into temp directory
 # this will cache them and speed up future builds
 FROM base AS install
 
-# Install make and python3 for node-gyp
-RUN apk add build-base python3 make 
+
 
 ## NODE MODULES
 # Install Dev Node Modules

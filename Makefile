@@ -89,3 +89,9 @@ build-prod: ## Run for production
 	@echo "\n...Building Web Container Image... \n"
 	docker build -t $(APP_NAME):latest --platform linux/amd64 -f ./development/Dockerfile . --target=prod
 	@echo "\n...Built Backend... \n"
+
+run-prod: ## Run container on port configured in `config.env`
+	@echo "\n...Launching Dev Server... \n"
+	docker run -it --rm -p $(PORT):$(PORT) --name $(APP_NAME) $(APP_NAME):latest
+	@echo "\nHold ctrl and click this link 'http://localhost:${PORT}'\n"
+

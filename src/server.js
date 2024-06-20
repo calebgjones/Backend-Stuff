@@ -21,7 +21,18 @@ import logger from "./middlewares/logger.js" // logging
 const app = express();
 app.use(cors());
 app.use(express.json());
-logger.debug("Env Vars: " + JSON.stringify(config));
+logger.debug("Env Vars: " + JSON.stringify({
+  PORT: process.env.PORT,
+  AWS_S3_BUCKET: process.env.AWS_S3_BUCKET,
+  AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID,
+  PGUSER: process.env.PGUSER,
+  PGHOST: process.env.PGHOST,
+  PGPASSWORD: process.env.PGPASSWORD,
+  PGDATABASE: process.env.PGDATABASE,
+  PGPORT: process.env.PGPORT,
+  LOG_LEVEL: process.env.LOG_LEVEL,
+  APP_NAME: process.env.APP_NAME
+}));
 const upload = multer({ dest: "../../uploads", limits: { fileSize: 50000000, files: 1 } });
 
 /**
