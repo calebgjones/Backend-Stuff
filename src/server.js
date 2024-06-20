@@ -22,7 +22,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 logger.debug("Env Vars: " + JSON.stringify(config));
-const upload = multer({ dest: "../../uploads" });
+const upload = multer({ dest: "../../uploads", limits: { fileSize: 50000000, files: 1 } });
 
 /**
  * *Postgres Setup
@@ -129,8 +129,9 @@ app.get("/songs", async (req, res) => {
 app.post('/song', upload.single('file'), async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   
+  const localFilePath = req.file.path;
   try {
-    const localFilePath = req.file.path;
+    console.log(req.file.mimetype)
     const fileData = fs.createReadStream(localFilePath);
 
     let songMetaData = req.body;
@@ -149,6 +150,12 @@ app.post('/song', upload.single('file'), async (req, res) => {
   } catch (error) {
     logger.error(error);
     res.status(500).send("Internal Server Error");
+  } finally {
+    fs.unlinkSync(localFilePath, err => {
+      if (err) {
+        logger.error(err);
+      }
+    });    
   }
 });
 

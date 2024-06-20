@@ -38,7 +38,7 @@ const uploadSong = async (songData) => {
     
 	try {
         const uploadFile = async (songData, songId) => {
-            const requestParams = { Bucket: process.env.AWS_S3_BUCKET, Key: songId, Body: songData };
+            const requestParams = { Bucket: process.env.AWS_S3_BUCKET, Key: songId, Body: songData, ContentLength: songData.length };
             const response = await s3Client.send(new PutObjectCommand(requestParams));
             const responseCode = await response.$metadata.httpStatusCode;
     
