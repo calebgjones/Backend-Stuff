@@ -87,14 +87,21 @@ app.get("/song/:id", async (req, res) => {
   logger.debug(`Retrieving song with songId: ${req.params.id}`);
 
   const requestedSong = await pgController.get.song(req.params.id);
-  const presignedUrl = await s3Controller.getPresignedURL(requestedSong[0].s3key);
 
-  console.log(await presignedUrl)
-  let songData = await requestedSong[0].dataValues;
+  const generateSongData = async () => {
+    if (await requestedSong.length === 0) {
+      res.status(404).send("Song not found");
+    } else {
+      const presignedUrl = await s3Controller.getPresignedURL(requestedSong[0].s3key);
 
-  songData.presignedUrl = presignedUrl
+      let songData = await requestedSong[0].dataValues;
+      songData.presignedUrl = presignedUrl
+      return songData;
+    }
+  }
 
   try {
+    const songData = await generateSongData();
     res.status(200).send(songData);
   } catch (error) {
     logger.error(error);
@@ -124,7 +131,7 @@ app.get("/songs", async (req, res) => {
  */
 app.post('/song', upload.single('file'), async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  
+
   const localFilePath = req.file.path;
   try {
     console.log(req.file.mimetype)
@@ -138,7 +145,7 @@ app.post('/song', upload.single('file'), async (req, res) => {
 
       logger.error(songMetaData)
 
-      const updateDb = pgController.post.song(songMetaData); 
+      const updateDb = pgController.post.song(songMetaData);
       return await updateDb;
     };
 
@@ -151,7 +158,7 @@ app.post('/song', upload.single('file'), async (req, res) => {
       if (err) {
         logger.error(err);
       }
-    });    
+    });
   }
 });
 

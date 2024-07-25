@@ -96,6 +96,7 @@ const pgController = {
 	},
 	get: {
 		song: async (id) => {
+			console.log(await Song.findAll({ where: { id: id } }))
 			return await Song.findAll({ where: { id: id } });
 		},
 		songs: async () => {
