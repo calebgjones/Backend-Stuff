@@ -87,13 +87,15 @@ app.get("/song/:id", async (req, res) => {
   logger.debug(`Retrieving song with songId: ${req.params.id}`);
 
   const requestedSong = await pgController.get.song(req.params.id);
-  const presignedUrl = await s3Controller.getPresignedURL(requestedSong[0].dataValues.s3key);
+  const presignedUrl = await s3Controller.getPresignedURL(requestedSong[0].s3key);
 
-  let songData = requestedSong[0].dataValues;
-  songData.presignedUrl = presignedUrl;
+  console.log(await presignedUrl)
+  let songData = await requestedSong[0].dataValues;
+
+  songData.presignedUrl = presignedUrl
 
   try {
-    res.status(200).send(await songData);
+    res.status(200).send(songData);
   } catch (error) {
     logger.error(error);
     res.status(500).send("Internal Server Error");
@@ -165,7 +167,9 @@ app.delete("/song/:id", async (req, res) => {
   if (await retrievedSong.length === 0) {
     res.status(404).send("Song not found");
   } else {
+
     const s3Key = await retrievedSong[0].dataValues.s3key;
+
     const deleteS3Obj = async () => {
       await s3Controller.deleteSong(s3Key);
     };
@@ -173,6 +177,8 @@ app.delete("/song/:id", async (req, res) => {
     const deleteSong = async () => {
       await pgController.delete.song(req.params.id);
     }
+
+
 
     try {
       await deleteS3Obj();
@@ -184,11 +190,6 @@ app.delete("/song/:id", async (req, res) => {
     }
   }
 });
-
-
-
-
-
 
 
 
@@ -208,8 +209,6 @@ app.get("/ready", validationController.healthCheck, async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.status(200).send("To Be Implemented, K8s Readiness Probe");
 });
-
-
 
 
 
