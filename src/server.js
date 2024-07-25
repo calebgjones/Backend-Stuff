@@ -8,8 +8,6 @@ import http from "http";
 import multer from "multer";
 import fs from "fs";
 
-const config = dotenv.config(); // Prints Local Variables
-
 /**
  * * Observability
  */
@@ -21,6 +19,11 @@ import logger from "./middlewares/logger.js" // logging
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+
+// Load and Log env vars
+dotenv.config();
+
 logger.debug("Env Vars: " + JSON.stringify({
   PORT: process.env.PORT,
   AWS_S3_BUCKET: process.env.AWS_S3_BUCKET,
@@ -75,19 +78,6 @@ logger.info("Starting server....");
  * - /health
  */
 
-/**
- * * /health for healthchecks in the future
- */
-app.get("/health", validationController.healthCheck, async (req, res) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.status(200).send("Server Ready");
-});
-
-
-
-
-
-
 
 /**
  * *GET /song/:songId
@@ -127,13 +117,6 @@ app.get("/songs", async (req, res) => {
   }
 });
 
-
-
-
-
-
-
-
 /**
  * *POST /song
  */
@@ -170,9 +153,6 @@ app.post('/song', upload.single('file'), async (req, res) => {
   }
 });
 
-
-
-
 /**
  * *DELETE /song/:songId
  */
@@ -204,6 +184,35 @@ app.delete("/song/:id", async (req, res) => {
     }
   }
 });
+
+
+
+
+
+
+
+
+
+/**
+ * * /health for healthchecks in the future
+ */
+app.get("/health", validationController.healthCheck, async (req, res) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.status(200).send("Health has been probed, and it was a success");
+});
+
+/**
+ * * /ready for k8s readiness
+ */
+app.get("/ready", validationController.healthCheck, async (req, res) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.status(200).send("To Be Implemented, K8s Readiness Probe");
+});
+
+
+
+
+
 
 // START SERVER
 const PORT = process.env.PORT;
